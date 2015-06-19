@@ -27,6 +27,7 @@ static int run_premake_main(lua_State* L, const char* script);
 
 /* A search path for script files */
 const char* scripts_path = NULL;
+const char* airnav_path = NULL;
 
 
 /* Built-in functions */
@@ -292,7 +293,7 @@ int premake_test_file(lua_State* L, const char* filename, int searchMask)
 		const char* path = getenv("PREMAKE_PATH");
 		if (path && do_locate(L, filename, path)) return OKAY;
 	}
-
+    
 	#if !defined(PREMAKE_NO_BUILTIN_SCRIPTS)
 	if ((searchMask & TEST_EMBEDDED) != 0) {
 		/* Try to locate a record matching the filename */
@@ -306,6 +307,10 @@ int premake_test_file(lua_State* L, const char* filename, int searchMask)
 		}
 	}
 	#endif
+    
+    if (searchMask & TEST_PATH) {
+        if(do_locate(L, filename, airnav_path)) return OKAY;
+    }
 
 	return !OKAY;
 }
@@ -349,6 +354,24 @@ static void build_premake_path(lua_State* L)
 		lua_pushstring(L, ";");
 		lua_pushstring(L, value);
 	}
+    
+    {
+        int top = lua_gettop(L);
+        const char* filename, *pend;
+        lua_getglobal(L, "_PREMAKE_COMMAND");
+        filename = lua_tostring(L, -1);
+        pend = strrchr(filename, '/');
+        if (pend == NULL)
+            ;
+        lua_pushlstring(L, filename, pend - filename);
+        lua_pushstring(L, "/../../src/Libs/Free/premake");
+        lua_concat(L, 2);
+        filename = lua_tostring(L, -1);
+        airnav_path = strdup(filename);
+        lua_settop(L, top);
+    }
+    lua_pushstring(L, ";");
+    lua_pushstring(L, airnav_path);
 
 	/* Then in ~/.premake */
 	lua_pushstring(L, ";");
