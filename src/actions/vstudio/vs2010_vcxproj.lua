@@ -1129,8 +1129,9 @@
 
 	function m.forceIncludes(cfg, condition)
 		if #cfg.forceincludes > 0 then
-			local includes = vstudio.path(cfg, cfg.forceincludes)
-			m.element("ForcedIncludeFiles", condition, table.concat(includes, ';'))
+			-- PR. Do not convert to relative paths because the paths have to be absolute or relative to the sources.
+			-- local includes = path.translate(project.getrelative(cfg.project, cfg.forceincludes))
+			m.element("ForcedIncludeFiles", condition, table.concat(cfg.forceincludes, ';'))
 		end
 		if #cfg.forceusings > 0 then
 			local usings = vstudio.path(cfg, cfg.forceusings)
