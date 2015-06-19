@@ -9,26 +9,41 @@
 
 int os_copyfile(lua_State* L)
 {
-	int z;
-	const char* src = luaL_checkstring(L, 1);
-	const char* dst = luaL_checkstring(L, 2);
-
+    int z=0;
+    const char* src = luaL_checkstring(L, 1);
+    const char* dst = luaL_checkstring(L, 2);
+    int tryLink = lua_toboolean(L, 3);
+    
+    if (tryLink)
+    {
 #if PLATFORM_WINDOWS
-	z = CopyFile(src, dst, FALSE);
+        _unlink(dst);
+        z = CreateHardLink(dst, src, NULL);
 #else
-	lua_pushfstring(L, "cp %s %s", src, dst);
-	z = (system(lua_tostring(L, -1)) == 0);
+        unlink(dst);
+        z = link(src, dst) == 0;
 #endif
-
-	if (!z)
-	{
-		lua_pushnil(L);
-		lua_pushfstring(L, "unable to copy file to '%s'", dst);
-		return 2;
-	}
-	else
-	{
-		lua_pushboolean(L, 1);
-		return 1;
-	}
+    }
+    
+    if (!z)
+    {
+#if PLATFORM_WINDOWS
+        z = CopyFile(src, dst, FALSE);
+#else
+        lua_pushfstring(L, "cp %s %s", src, dst);
+        z = (system(lua_tostring(L, -1)) == 0);
+#endif
+    }
+    
+    if (!z)
+    {
+        lua_pushnil(L);
+        lua_pushfstring(L, "unable to copy file to '%s'", dst);
+        return 2;
+    }
+    else
+    {
+        lua_pushboolean(L, 1);
+        return 1;
+    }
 }
