@@ -291,7 +291,7 @@
 				local isfile = os.matchisfile(m)
 				if (matchFiles and isfile) or (not matchFiles and not isfile) then
 					local fname = os.matchname(m)
-					if isfile or not fname:startswith(".") then
+					if isfile and not fname:startswith(".") then
 						fname = path.join(basedir, fname)
 						if fname:match(mask) == fname then
 							table.insert(result, fname)
