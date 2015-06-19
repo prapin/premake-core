@@ -6,7 +6,7 @@
 
 	return {
 		"xcode",
-		"monodevelop",
-		"codelite",
-		"d",
+		--"monodevelop",
+		--"codelite",
+		--"d",
 	}
