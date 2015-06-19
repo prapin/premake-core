@@ -437,7 +437,11 @@
 			-- $(LIBS) moved to end (http://sourceforge.net/p/premake/bugs/279/)
 
 			local cc = iif(cfg.language == "C", "CC", "CXX")
-			_p('  LINKCMD = $(%s) -o $(TARGET) $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)', cc)
+			if cfg.system == premake.LINUX then
+				_p('  LINKCMD = $(%s) -o $(TARGET) $(OBJECTS) $(RESOURCES) -Wl,--start-group $(ALL_LDFLAGS) $(LIBS) -Wl,--end-group ', cc)
+			else
+				_p('  LINKCMD = $(%s) -o $(TARGET) $(OBJECTS) $(RESOURCES) $(ALL_LDFLAGS) $(LIBS)  ', cc)
+			end
 		end
 	end
 
