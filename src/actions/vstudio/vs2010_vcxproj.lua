@@ -1620,7 +1620,7 @@
 	end
 
 	function m.stringPooling(cfg)
-		if config.isOptimizedBuild(cfg) then
+		if true then -- config.isOptimizedBuild(cfg) then
 			p.w('<StringPooling>true</StringPooling>')
 		end
 	end
