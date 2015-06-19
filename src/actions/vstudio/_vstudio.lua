@@ -12,6 +12,12 @@
 	local project = p.project
 	local config = p.config
 
+	premake.api.register {
+		name = "targetPlatformVersion",
+		scope = "config",
+		kind = "string",
+	}
+
 
 --
 -- Mapping tables from Premake systems and architectures to Visual Studio

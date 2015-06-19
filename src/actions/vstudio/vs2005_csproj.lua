@@ -79,6 +79,7 @@
 		"assemblyName",
 		"targetFrameworkVersion",
 		"targetFrameworkProfile",
+		"targetPlatformVersion",
 		"fileAlignment",
 		"projectTypeGuids",
 	}
@@ -490,6 +491,14 @@
 		end
 	end
 
+
+	function cs2005.targetPlatformVersion(cfg)
+		local action = premake.action.current()
+		local platform = cfg.targetPlatformVersion
+		if platform then
+			_p(2,'<TargetPlatformVersion>%s</TargetPlatformVersion>', platform)
+		end
+	end
 
 	function cs2005.targets(prj)
 		local bin = iif(_ACTION <= "vs2010", "MSBuildBinPath", "MSBuildToolsPath")
