@@ -288,7 +288,7 @@
 			-- retrieve files from OS and test against mask
 			local m = os.matchstart(wildcard)
 			while os.matchnext(m) do
-				local isfile = os.matchisfile(m)
+				local isfile = os.matchisfile(m) or path.getextension(os.matchname(m)):match("^%.%a*$")
 				if (matchFiles and isfile) or (not matchFiles and not isfile) then
 					local fname = os.matchname(m)
 					if isfile and not fname:startswith(".") then
@@ -305,7 +305,8 @@
 			if recurse then
 				m = os.matchstart(wildcard)
 				while os.matchnext(m) do
-					if not os.matchisfile(m) then
+					local isfile = os.matchisfile(m) or path.getextension(os.matchname(m)):match("^%.%a*$")
+					if not isfile then
 						local dirname = os.matchname(m)
 						if (not dirname:startswith(".")) then
 							matchwalker(path.join(basedir, dirname))
