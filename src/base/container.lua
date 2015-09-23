@@ -106,6 +106,9 @@
 
 		child.parent = self
 		child[self.class.name] = self
+		if self.class.alias then
+			child[self.class.alias] = self
+		end
 	end
 
 
@@ -149,6 +152,12 @@
 	function container.bakeChildren(self)
 		for class in container.eachChildClass(self.class) do
 			local children = self[class.pluralName]
+
+			-- sort children by name.
+			table.sort(children, function(a,b) 
+				return a.name < b.name
+			end)
+
 			for i = 1, #children do
 				local ctx = container.bake(children[i])
 				children[i] = ctx
@@ -188,7 +197,7 @@
 			end
 		end
 
-		if class.name == scope then
+		if class.name == scope or class.alias == scope then
 			return true
 		end
 
@@ -197,6 +206,32 @@
 			return true
 		end
 
+		return false
+	end
+
+
+
+---
+-- Return true if a container class is or inherits from the
+-- specified class.
+--
+-- @param class
+--    The container class to be tested.
+-- @param scope
+--    The name of the class to be checked against. If the container
+--    class matches this scope (i.e. class is a project and the
+--    scope is "project"), or if it is a parent object of it (i.e.
+--    class is a workspace and scope is "project"), then returns
+--    true.
+---
+
+	function container.classIsA(class, scope)
+		while class do
+			if class.name == scope or class.alias == scope then
+				return true
+			end
+			class = class.parent
+		end
 		return false
 	end
 
@@ -284,27 +319,26 @@
 
 
 ---
--- Return true if a container class is or inherits from the
--- specified class.
+-- Determine if the container contains a child of the specified class which
+-- meets the criteria of a testing function.
 --
+-- @param self
+--    The container to be queried.
 -- @param class
---    The container class to be tested.
--- @param scope
---    The name of the class to be checked against. If the container
---    class matches this scope (i.e. class is a project and the
---    scope is "project"), or if it is a parent object of it (i.e.
---    class is a solution and scope is "project"), then returns
---    true.
+--    The class of the child containers to be enumerated.
+-- @param func
+--    A function that takes a child container as its only argument, and
+--    returns true if it meets the selection criteria for the call.
+-- @return
+--    True if the test function returns true for any child.
 ---
 
-	function container.classIsA(class, scope)
-		while class do
-			if class.name == scope then
+	function container.hasChild(self, class, func)
+		for child in container.eachChild(self, class) do
+			if func(child) then
 				return true
 			end
-			class = class.parent
 		end
-		return false
 	end
 
 

@@ -22,18 +22,18 @@
 
 
 ---
--- Validate a solution and its projects.
+-- Validate a workspace and its projects.
 ---
 
-	function p.solution.validate(self)
+	function p.workspace.validate(self)
 		-- there must be at least one build configuration
 		if not self.configurations or #self.configurations == 0 then
-			p.error("solution '%s' does not contain any configurations", self.name)
+			p.error("workspace '%s' does not contain any configurations", self.name)
 		end
 
 		-- all project UUIDs must be unique
 		local uuids = {}
-		for prj in p.solution.eachproject(self) do
+		for prj in p.workspace.eachproject(self) do
 			if uuids[prj.uuid] then
 				p.error("projects '%s' and '%s' have the same UUID", uuids[prj.uuid], prj.name)
 			end
@@ -53,6 +53,14 @@
 		-- must have a language
 		if not self.language then
 			p.error("project '%s' does not have a language", self.name)
+		end
+
+		if not p.action.supports(self.language) then
+			p.warn("unsupported language '%s' used for project '%s'", self.language, self.name)
+		end
+
+		if not p.action.supports(self.kind) then
+			p.warn("unsupported kind '%s' used for project '%s'", self.kind, self.name)
 		end
 
 		-- all rules must exist

@@ -39,6 +39,7 @@
 		p.indent("\t")
 		p.callArray(m.elements.project, prj)
 		p.pop('</VisualStudioProject>')
+		p.w()
 	end
 
 
@@ -753,10 +754,10 @@
 			return 1
 		else
 			-- Edit-and-continue doesn't work for some configurations
-			if not cfg.editandcontinue or
-				config.isOptimizedBuild(cfg) or
-			    cfg.clr ~= p.OFF or
-			    cfg.architecture == p.X86_64
+			if cfg.editandcontinue == p.OFF or
+			   config.isOptimizedBuild(cfg) or
+			   cfg.clr ~= p.OFF or
+			   cfg.architecture == p.X86_64
 			then
 				return 3
 			else
@@ -1122,9 +1123,9 @@
 
 
 	function m.exceptionHandling(cfg)
-		if cfg.flags.NoExceptions then
+		if cfg.exceptionhandling == p.OFF then
 			p.w('ExceptionHandling="%s"', iif(_ACTION < "vs2005", "FALSE", 0))
-		elseif cfg.flags.SEH and _ACTION > "vs2003" then
+		elseif cfg.exceptionhandling == "SEH" and _ACTION > "vs2003" then
 			p.w('ExceptionHandling="2"')
 		end
 	end
@@ -1443,12 +1444,12 @@
 		local deps = project.getdependencies(prj)
 		if #deps > 0 then
 			-- This is a little odd: Visual Studio wants the "relative path to project"
-			-- to be relative to the *solution*, rather than the project doing the
+			-- to be relative to the *workspace*, rather than the project doing the
 			-- referencing. Which, in theory, would break if the project is included
-			-- in more than one solution. But that's how they do it.
+			-- in more than one workspace. But that's how they do it.
 
 			for i, dep in ipairs(deps) do
-				local relpath = vstudio.path(prj.solution, vstudio.projectfile(dep))
+				local relpath = vstudio.path(prj.workspace, vstudio.projectfile(dep))
 
 				-- Visual Studio wants the path to start with ./ or ../
 				if not relpath:startswith(".") then
@@ -1519,8 +1520,10 @@
 
 
 	function m.runtimeTypeInfo(cfg)
-		if cfg.flags.NoRTTI and cfg.clr == p.OFF then
+		if cfg.rtti == p.OFF and cfg.clr == p.OFF then
 			p.w('RuntimeTypeInfo="false"')
+		elseif cfg.rtti == p.ON then
+			p.w('RuntimeTypeInfo="true"')
 		end
 	end
 

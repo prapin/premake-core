@@ -13,11 +13,11 @@
 -- Setup and teardown
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "vs2005"
-		sln, prj = test.createsolution()
+		wks, prj = test.createWorkspace()
 		language "C#"
 	end
 
@@ -48,7 +48,7 @@
 		_ACTION = "vs2008"
 		prepare()
 		test.capture [[
-		<OutputPath>.\</OutputPath>
+		<OutputPath>bin\Debug\</OutputPath>
 		<IntermediateOutputPath>obj\Debug\</IntermediateOutputPath>
 		]]
 	end
@@ -57,7 +57,7 @@
 		_ACTION = "vs2010"
 		prepare()
 		test.capture [[
-		<OutputPath>.\</OutputPath>
+		<OutputPath>bin\Debug\</OutputPath>
 		<BaseIntermediateOutputPath>obj\Debug\</BaseIntermediateOutputPath>
 		<IntermediateOutputPath>$(BaseIntermediateOutputPath)</IntermediateOutputPath>
 		]]

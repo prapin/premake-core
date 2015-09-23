@@ -12,27 +12,17 @@
 -- Setup and teardown
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "test"
-		sln, prj = test.createsolution()
+		wks, prj = test.createWorkspace()
 		system "macosx"
 	end
 
 	local function prepare()
 		local cfg = test.getconfig(prj, "Debug")
 		return config.gettargetinfo(cfg)
-	end
-
-
---
--- Directory should be current (".") by default.
---
-
-	function suite.directoryIsDot_onNoTargetDir()
-		i = prepare()
-		test.isequal(".", path.getrelative(os.getcwd(), i.directory))
 	end
 
 
@@ -242,7 +232,7 @@
 		kind "WindowedApp"
 		system "MacOSX"
 		i = prepare()
-		test.isequal("MyProject.app/Contents/MacOS", path.getrelative(os.getcwd(), i.bundlepath))
+		test.isequal("bin/Debug/MyProject.app/Contents/MacOS", path.getrelative(os.getcwd(), i.bundlepath))
 	end
 
 

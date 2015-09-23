@@ -24,14 +24,14 @@
 		kind = "string",
 		allowed = {
 			"universal",
-			"x86",
-			"x86_64",
+			p.X86,
+			p.X86_64,
 		},
 		aliases = {
-			i386 = "x86",
-			amd64 = "x86_64",
-			x32 = "x86",	-- these should be DEPRECATED
-			x64 = "x86_64",
+			i386  = p.X86,
+			amd64 = p.X86_64,
+			x32   = p.X86,	-- these should be DEPRECATED
+			x64   = p.X86_64,
 		},
 	}
 
@@ -251,6 +251,17 @@
 	}
 
 	api.register {
+		name = "debuggertype",
+		scope = "config",
+		kind = "string",
+		allowed = {
+			"Mixed",
+			"NativeOnly",
+			"ManagedOnly",
+		}
+	}
+
+	api.register {
 		name = "debugpathmap",
 		scope = "config",
 		kind = "list:keyed:path",
@@ -343,7 +354,24 @@
 	api.register {
 		name = "editandcontinue",
 		scope = "config",
-		kind = "boolean",
+		kind = "string",
+		allowed = {
+			"Default",
+			"On",
+			"Off",
+		},
+	}
+
+	api.register {
+		name = "exceptionhandling",
+		scope = "config",
+		kind = "string",
+		allowed = {
+			"Default",
+			"On",
+			"Off",
+			"SEH"
+		},
 	}
 
 	api.register {
@@ -362,6 +390,12 @@
 			"Little",
 			"Big",
 		},
+	}
+
+	api.register {
+		name = "entrypoint",
+		scope = "config",
+		kind = "string",
 	}
 
 	api.register {
@@ -416,7 +450,7 @@
 			"No64BitChecks",
 			"NoCopyLocal",
 			"NoEditAndContinue",   -- DEPRECATED
-			"NoExceptions",
+			"NoExceptions",        -- DEPRECATED
 			"NoFramePointer",
 			"NoImplicitLink",
 			"NoImportLib",
@@ -426,7 +460,7 @@
 			"NoNativeWChar",       -- DEPRECATED
 			"NoPCH",
 			"NoRuntimeChecks",
-			"NoRTTI",
+			"NoRTTI",              -- DEPRECATED
 			"NoBufferSecurityCheck",
 			"NoWarnings",          -- DEPRECATED
 			"OmitDefaultLibrary",
@@ -435,7 +469,7 @@
 			"OptimizeSpeed",       -- DEPRECATED
 			"RelativeLinks",
 			"ReleaseRuntime",      -- DEPRECATED
-			"SEH",
+			"SEH",                 -- DEPRECATED
 			"ShadowedVariables",
 			"StaticRuntime",
 			"Symbols",
@@ -463,6 +497,18 @@
 			"Default",
 			"Fast",
 			"Strict",
+		}
+	}
+
+	api.register {
+		name = "inlining",
+		scope = "config",
+		kind = "string",
+		allowed = {
+			"Default",
+			"Disabled",
+			"Explicit",
+			"Auto"
 		}
 	}
 
@@ -512,6 +558,13 @@
 		name = "gccprefix",
 		scope = "config",
 		kind = "string",
+		tokens = true,
+	}
+
+	api.register {
+		name = "ignoredefaultlibraries",
+		scope = "config",
+		kind = "list:mixed",
 		tokens = true,
 	}
 
@@ -818,6 +871,17 @@
 	}
 
 	api.register {
+		name = "rtti",
+		scope = "config",
+		kind = "string",
+		allowed = {
+			"Default",
+			"On",
+			"Off",
+		},
+	}
+
+	api.register {
 		name = "rules",
 		scope = "project",
 		kind = "list:string",
@@ -825,7 +889,7 @@
 
 	api.register {
 		name = "startproject",
-		scope = "solution",
+		scope = "workspace",
 		kind = "string",
 		tokens = true,
 	}
@@ -922,6 +986,12 @@
 	}
 
 	api.register {
+		name = "customtoolnamespace",
+		scope = "config",
+		kind = "string",
+	}
+
+	api.register {
 		name = "undefines",
 		scope = "config",
 		kind = "list:string",
@@ -967,6 +1037,9 @@
 			"AVX2",
 			"SSE",
 			"SSE2",
+			"SSE3",
+			"SSSE3",
+			"SSE4.1",
 		}
 	}
 
@@ -1120,6 +1193,31 @@
 	end)
 
 
+	api.deprecateValue("flags", "NoExceptions", 'Use `exceptionhandling "Off"` instead',
+	function(value)
+		exceptionhandling "Off"
+	end,
+	function(value)
+		exceptionhandling "On"
+	end)
+
+
+	api.deprecateValue("flags", "NoRTTI", 'Use `rtti "Off"` instead',
+	function(value)
+		rtti "Off"
+	end,
+	function(value)
+		rtti "On"
+	end)
+
+	api.deprecateValue("flags", "SEH", 'Use `exceptionhandling "SEH"` instead',
+	function(value)
+		exceptionhandling "SEH"
+	end,
+	function(value)
+		exceptionhandling "Default"
+	end)
+
 	api.deprecateValue("flags", "Unsafe", nil,
 	function(value)
 		clr "Unsafe"
@@ -1236,7 +1334,8 @@
 -----------------------------------------------------------------------------
 
 	clr "Off"
-	editandcontinue "On"
+	exceptionhandling "Default"
+	rtti "Default"
 
 	-- Setting a default language makes some validation easier later
 

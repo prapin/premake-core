@@ -121,10 +121,25 @@ int string_endswith(lua_State* L);
 int string_hash(lua_State* L);
 int string_sha1(lua_State* L);
 int string_startswith(lua_State* L);
+int buffered_new(lua_State* L);
+int buffered_write(lua_State* L);
+int buffered_writeln(lua_State* L);
+int buffered_close(lua_State* L);
+int buffered_tostring(lua_State* L);
+
+#ifdef PREMAKE_CURL
+int http_get(lua_State* L);
+int http_download(lua_State* L);
+#endif
+
+#ifdef PREMAKE_COMPRESSION
+int zip_extract(lua_State* L);
+#endif
 
 /* Engine interface */
 int premake_init(lua_State* L);
 int premake_execute(lua_State* L, int argc, const char** argv, const char* script);
+const char* premake_find_embedded_script(const char* filename);
 int premake_load_embedded_script(lua_State* L, const char* filename);
 int premake_locate_executable(lua_State* L, const char* argv0);
 int premake_test_file(lua_State* L, const char* filename, int searchMask);

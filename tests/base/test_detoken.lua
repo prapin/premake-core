@@ -52,9 +52,9 @@
 --
 
 	function suite.expandsNestedTokens()
-		environ.sln = { name="MySolution%{'X'}" }
-		x = detoken.expand("%{sln.name}", environ)
-		test.isequal("MySolutionX", x)
+		environ.wks = { name="MyWorkspace%{'X'}" }
+		x = detoken.expand("%{wks.name}", environ)
+		test.isequal("MyWorkspaceX", x)
 	end
 
 
@@ -118,4 +118,24 @@
 		action.pathVars = { ["cfg.objdir"] = "$(IntDir)" }
 		x = detoken.expand(os.getcwd() .. "/%{cfg.objdir}/file", environ, {paths=true,pathVars=true})
 		test.isequal("$(IntDir)/file", x)
+	end
+
+--
+-- Escapes backslashes correctly.
+--
+
+	function suite.escapesBackslashes()
+		environ.foo = "some/path"
+		x = detoken.expand("%{foo:gsub('/', '\\')}", environ)
+		test.isequal("some\\path", x)
+	end
+
+--
+-- Escapes backslashes correctly, but not outside tokens.
+--
+
+	function suite.escapesBackslashes2()
+		environ.foo = "some/path"
+		x = detoken.expand("%{foo:gsub('/', '\\')}\\already\\escaped", environ)
+		test.isequal("some\\path\\already\\escaped", x)
 	end

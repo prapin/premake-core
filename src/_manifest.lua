@@ -37,7 +37,7 @@
 
 		-- project objects
 		"base/global.lua",
-		"base/solution.lua",
+		"base/workspace.lua",
 		"base/group.lua",
 		"base/project.lua",
 		"base/config.lua",
@@ -59,7 +59,7 @@
 
 		-- GNU make action
 		"actions/make/_make.lua",
-		"actions/make/make_solution.lua",
+		"actions/make/make_workspace.lua",
 		"actions/make/make_cpp.lua",
 		"actions/make/make_csharp.lua",
 

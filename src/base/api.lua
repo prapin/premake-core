@@ -1,6 +1,6 @@
 --
 -- api.lua
--- Implementation of the solution, project, and configuration APIs.
+-- Implementation of the workspace, project, and configuration APIs.
 -- Author Jason Perkins
 -- Copyright (c) 2002-2015 Jason Perkins and the Premake project
 --
@@ -15,7 +15,7 @@
 
 ---
 -- Set up a place to store the current active objects in each configuration
--- scope (e.g. solutions, projects, groups, and configurations). This likely
+-- scope (e.g. wprkspaces, projects, groups, and configurations). This likely
 -- ought to be internal scope, but it is useful for testing.
 ---
 
@@ -27,15 +27,15 @@
 -- Define a new class of configuration container. A container can receive and
 -- store configuration blocks, which are what hold the individial settings
 -- from the scripts. A container can also hold one or more kinds of child
--- containers; a solution can contain projects, for instance.
+-- containers; a workspace can contain projects, for instance.
 --
 -- @param containerName
---    The name of the new container type, e.g. "solution". Used to define a
---    corresponding global function, e.g. solution() to create new instances
+--    The name of the new container type, e.g. "workspace". Used to define a
+--    corresponding global function, e.g. workspace() to create new instances
 --    of the container.
 -- @param parentContainer (optional)
 --    The container that can contain this one. For a project, this would be
---    the solution container class.
+--    the workspace container class.
 -- @param extraScopes (optional)
 --    Each container can hold fields scoped to itself (by putting the container's
 --    class name into its scope attribute), or any of the container's children.
@@ -66,7 +66,7 @@
 		end
 
 		-- for backward compatibility
-		_G["external" .. containerName:capitalized()] = _G["external" .. containerName]
+		p.alias(_G, "external" .. containerName, "external" .. containerName:capitalized())
 
 		return class
 	end
@@ -76,22 +76,24 @@
 ---
 -- Register a general-purpose includeExternal() call which works just like
 -- include(), but marks any containers created while evaluating the included
--- scripts as external.
+-- scripts as external. It also, loads the file regardless of how many times
+-- it has been loaded already.
 ---
 
 	function includeexternal(fname)
+		local fullPath = premake.findProjectScript(fname)
 		api._isIncludingExternal = true
-		include(fname)
+		fname = fullPath or fname
+		dofile(fname)
 		api._isIncludingExternal = nil
 	end
 
-	includeExternal = includeexternal
+	p.alias(_G, "includeexternal", "includeExternal")
 
 
 
 ---
--- Return the global configuration container. You could just call global()
--- too, but this is much faster.
+-- Return the global configuration container.
 ---
 
 	function api.rootContainer()
@@ -100,24 +102,14 @@
 
 
 
-
-	function api._clearContainerChildren(class)
-		for childClass in p.container.eachChildClass(class) do
-			api.scope[childClass.name] = nil
-			api._clearContainerChildren(childClass)
-		end
-	end
-
-
-
 ---
 -- Activate a new configuration container, making it the target for all
--- subsequent configuration settings. When you call solution() or project()
+-- subsequent configuration settings. When you call workspace() or project()
 -- to active a container, that call comes here (see api.container() for the
 -- details on how that happens).
 --
 -- @param class
---    The container class being activated, e.g. a project or solution.
+--    The container class being activated, e.g. a project or workspace.
 -- @param name
 --    The name of the container instance to be activated. If a container
 --    (e.g. project) with this name does not already exist it will be
@@ -178,10 +170,23 @@
 
 		while instance do
 			api.scope[instance.class.name] = instance
+			if instance.class.alias then
+				api.scope[instance.class.alias] = instance
+			end
 			instance = instance.parent
 		end
 
 		return api.scope.current
+	end
+
+	function api._clearContainerChildren(class)
+		for childClass in p.container.eachChildClass(class) do
+			api.scope[childClass.name] = nil
+			if childClass.alias then
+				api.scope[childClass.alias] = nil
+			end
+			api._clearContainerChildren(childClass)
+		end
 	end
 
 
@@ -211,8 +216,8 @@
 --
 --   The available field scopes are:
 --
---     project  The field applies to solutions and projects.
---     config   The field applies to solutions, projects, and individual build
+--     project  The field applies to workspaces and projects.
+--     config   The field applies to workspaces, projects, and individual build
 --              configurations.
 --
 --   The available field kinds are:
@@ -314,8 +319,10 @@
 ---
 
      function api.alias(original, alias)
-		_G[alias] = _G[original]
-		_G["remove" .. alias] = _G["remove" .. original]
+     	p.alias(_G, original, alias)
+     	if _G["remove" .. original] then
+     		p.alias(_G, "remove" .. original, "remove" .. alias)
+     	end
      end
 
 
@@ -655,9 +662,9 @@
 ---
 
 	function api.reset()
-		-- Clear out all top level objects, but keep the root config
-		api.scope.global.rules = {}
-		api.scope.global.solutions = {}
+		for containerClass in p.container.eachChildClass(p.global) do
+			api.scope.global[containerClass.pluralName] = {}
+		end
 	end
 
 
@@ -743,23 +750,20 @@
 	premake.field.kind("directory", {
 		paths = true,
 		store = function(field, current, value, processor)
-			if string.sub(value, 1, 2) == "%{" then
-				return value
-			elseif value:find("*") then
-				value = os.matchdirs(value)
-				for i, file in ipairs(value) do
-					value[i] = path.getabsolute(value[i])
-				end
-				return value
-			else
-				return path.getabsolute(value)
-			end
+			return path.getabsolute(value)
 		end,
 		remove = function(field, current, value, processor)
 			return path.getabsolute(value)
 		end,
 		compare = function(field, a, b, processor)
 			return (a == b)
+		end,
+
+		translate = function(field, current, _, processor)
+			if current:find("*") then
+				return os.matchdirs(current)
+			end
+			return { current }
 		end
 	})
 
@@ -773,23 +777,20 @@
 	premake.field.kind("file", {
 		paths = true,
 		store = function(field, current, value, processor)
-			if string.sub(value, 1, 2) == "%{" then
-				return value
-			elseif value:find("*") then
-				value = os.matchfiles(value)
-				for i, file in ipairs(value) do
-					value[i] = path.getabsolute(value[i])
-				end
-				return value
-			else
-				return path.getabsolute(value)
-			end
+			return path.getabsolute(value)
 		end,
 		remove = function(field, current, value, processor)
 			return path.getabsolute(value)
 		end,
 		compare = function(field, a, b, processor)
 			return (a == b)
+		end,
+
+		translate = function(field, current, _, processor)
+			if current:find("*") then
+				return os.matchfiles(current)
+			end
+			return { current }
 		end
 	})
 
@@ -877,6 +878,16 @@
 				end
 			end
 			return true
+		end,
+
+		translate = function(field, current, _, processor)
+			if not processor then
+				return { current }
+			end
+			for k, v in pairs(current) do
+				current[k] = processor(field, v, nil)[1]
+			end
+			return { current }
 		end
 	})
 
@@ -957,6 +968,19 @@
 				end
 			end
 			return true
+		end,
+
+		translate = function(field, current, _, processor)
+			if not processor then
+				return { current }
+			end
+			local ret = {}
+			for _, value in ipairs(current) do
+				for _, processed in ipairs(processor(field, value, nil)) do
+					table.insert(ret, processed)
+				end
+			end
+			return { ret }
 		end
 	})
 

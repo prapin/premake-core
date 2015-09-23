@@ -14,7 +14,7 @@
 #endif
 
 
-#define VERSION        "HEAD"
+#define VERSION        "5.0.0-dev"
 #define COPYRIGHT      "Copyright (C) 2002-2015 Jason Perkins and the Premake Project"
 #define PROJECT_URL    "https://github.com/premake/premake-core/wiki"
 #define ERROR_MESSAGE  "Error: %s\n"
@@ -87,6 +87,29 @@ static const luaL_Reg string_functions[] = {
 	{ NULL, NULL }
 };
 
+static const luaL_Reg buffered_functions[] = {
+	{ "new", buffered_new },
+	{ "write", buffered_write },
+	{ "writeln", buffered_writeln },
+	{ "tostring", buffered_tostring },
+	{ "close", buffered_close },
+	{ NULL, NULL }
+};
+
+#ifdef PREMAKE_CURL
+static const luaL_Reg http_functions[] = {
+	{ "get",  http_get },
+	{ "download",  http_download },
+	{ NULL, NULL }
+};
+#endif
+
+#ifdef PREMAKE_COMPRESSION
+static const luaL_Reg zip_functions[] = {
+	{ "extract",  zip_extract },
+	{ NULL, NULL }
+};
+#endif
 
 /**
  * Initialize the Premake Lua environment.
@@ -100,6 +123,15 @@ int premake_init(lua_State* L)
 	luaL_register(L, "path",     path_functions);
 	luaL_register(L, "os",       os_functions);
 	luaL_register(L, "string",   string_functions);
+	luaL_register(L, "buffered", buffered_functions);
+
+#ifdef PREMAKE_CURL
+	luaL_register(L, "http",     http_functions);
+#endif
+
+#ifdef PREMAKE_COMPRESSION
+	luaL_register(L, "zip",     zip_functions);
+#endif
 
 	/* push the application metadata */
 	lua_pushstring(L, LUA_COPYRIGHT);
@@ -429,7 +461,7 @@ static int process_arguments(lua_State* L, int argc, const char** argv)
 	for (i = 1; i < argc; ++i)
 	{
 		lua_pushstring(L, argv[i]);
-		lua_rawseti(L, -2, luaL_getn(L, -2) + 1);
+		lua_rawseti(L, -2, lua_objlen(L, -2) + 1);
 
 		/* The /scripts option gets picked up here; used later to find the
 		 * manifest and scripts later if necessary */
@@ -485,6 +517,26 @@ static int run_premake_main(lua_State* L, const char* script)
 
 
 /**
+ * Locate a file in the embedded script index. If found, returns the
+ * contents of the file's script.
+ */
+
+ const char* premake_find_embedded_script(const char* filename)
+ {
+#if !defined(PREMAKE_NO_BUILTIN_SCRIPTS)
+ 	int i;
+	for (i = 0; builtin_scripts_index[i] != NULL; ++i) {
+		if (strcmp(builtin_scripts_index[i], filename) == 0) {
+			return builtin_scripts[i];
+		}
+	}
+#endif
+	return NULL;
+ }
+
+
+
+/**
  * Load a script that was previously embedded into the executable. If
  * successful, a function containing the new script chunk is pushed to
  * the stack, just like luaL_loadfile would do had the chunk been loaded
@@ -493,22 +545,11 @@ static int run_premake_main(lua_State* L, const char* script)
 
 int premake_load_embedded_script(lua_State* L, const char* filename)
 {
-	int i;
-	const char* chunk = NULL;
 #if !defined(NDEBUG)
 	static int warned = 0;
 #endif
 
-	/* Try to locate a record matching the filename */
-	#if !defined(PREMAKE_NO_BUILTIN_SCRIPTS)
-	for (i = 0; builtin_scripts_index[i] != NULL; ++i) {
-		if (strcmp(builtin_scripts_index[i], filename) == 0) {
-			chunk = builtin_scripts[i];
-			break;
-		}
-	}
-	#endif
-
+	const char* chunk = premake_find_embedded_script(filename);
 	if (chunk == NULL) {
 		return !OKAY;
 	}

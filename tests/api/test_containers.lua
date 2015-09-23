@@ -1,6 +1,6 @@
 --
 -- tests/api/test_containers.lua
--- Tests the API's solution() and project() container definitions.
+-- Tests the API's workspace() and project() container definitions.
 -- Copyright (c) 2013-2014 Jason Perkins and the Premake project
 --
 
@@ -12,10 +12,10 @@
 -- Setup and teardown
 --
 
-	local sln
+	local wks
 
 	function suite.setup()
-		sln = solution("MySolution")
+		wks = workspace("MyWorkspace")
 	end
 
 
@@ -23,13 +23,13 @@
 -- The first time a name is encountered, a new container should be created.
 --
 
-	function suite.solution_createsOnFirstUse()
-		test.isnotnil(premake.global.getSolution("MySolution"))
+	function suite.workspace_createsOnFirstUse()
+		test.isnotnil(premake.global.getWorkspace("MyWorkspace"))
 	end
 
 	function suite.project_createsOnFirstUse()
 		project("MyProject")
-		test.isnotnil(premake.solution.getproject(sln, "MyProject"))
+		test.isnotnil(test.getproject(wks, "MyProject"))
 	end
 
 
@@ -37,8 +37,8 @@
 -- When a container is created, it should become the active scope.
 --
 
-	function suite.solution_setsActiveScope()
-		test.issame(api.scope.solution, sln)
+	function suite.workspace_setsActiveScope()
+		test.issame(api.scope.workspace, wks)
 	end
 
 	function suite.project_setsActiveScope()
@@ -52,11 +52,11 @@
 -- become the current scope.
 --
 
-	function suite.solution_setsActiveScope_onNoArgs()
+	function suite.workspace_setsActiveScope_onNoArgs()
 		project("MyProject")
 		group("MyGroup")
-		solution()
-		test.issame(sln, api.scope.solution)
+		workspace()
+		test.issame(wks, api.scope.workspace)
 		test.isnil(api.scope.project)
 		test.isnil(api.scope.group)
 	end
@@ -73,12 +73,12 @@
 -- The "*" name should activate the parent scope.
 --
 
-	function suite.solution_onStar()
+	function suite.workspace_onStar()
 		project("MyProject")
 		group("MyGroup")
 		filter("Debug")
-		solution "*"
-		test.isnil(api.scope.solution)
+		workspace("*")
+		test.isnil(api.scope.workspace)
 		test.isnil(api.scope.project)
 		test.isnil(api.scope.group)
 	end
@@ -88,6 +88,6 @@
 		group("MyGroup")
 		filter("Debug")
 		project "*"
-		test.issame(sln, api.scope.solution)
+		test.issame(wks, api.scope.workspace)
 		test.isnil(api.scope.project)
 	end

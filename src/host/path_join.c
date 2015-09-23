@@ -28,6 +28,12 @@ int path_join(lua_State* L)
 		part = luaL_checkstring(L, i);
 		len = strlen(part);
 
+		/* remove leading "./" */
+		while (strncmp(part, "./", 2) == 0) {
+			part += 2;
+			len -= 2;
+		}
+
 		/* remove trailing slashes */
 		while (len > 1 && part[len - 1] == '/') {
 			--len;
@@ -61,7 +67,11 @@ int path_join(lua_State* L)
 			}
 
 			/* if I hit a segment I can't trim, bail out */
-			if (*start == '$') {
+			if (strcmp(start, "..") == 0	/* parent dir */
+				|| strcmp(start, ".") == 0	/* current dir */
+				|| strstr(start, "**") != NULL	/* recursive wildcard */
+				|| strchr(start, '$') != NULL)	/* property expansion */
+			{
 				break;
 			}
 

@@ -12,7 +12,7 @@
 -- Setup
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "vs2010"
@@ -25,11 +25,11 @@
 			separator = ";"
 		}
 
-		sln = test.createsolution()
+		wks = test.createWorkspace()
 	end
 
 	local function prepare()
-		prj = premake.solution.getproject(sln, 1)
+		prj = test.getproject(wks, 1)
 		vc2010.files(prj)
 	end
 
@@ -64,6 +64,16 @@
 		test.capture [[
 <ItemGroup>
 	<ResourceCompile Include="resources\hello.rc" />
+</ItemGroup>
+		]]
+	end
+
+	function suite.midlCompile_onIDLFile()
+		files { "idl/interfaces.idl" }
+		prepare()
+		test.capture [[
+<ItemGroup>
+	<Midl Include="idl\interfaces.idl" />
 </ItemGroup>
 		]]
 	end

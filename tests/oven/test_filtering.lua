@@ -5,22 +5,21 @@
 --
 
 	local suite = test.declare("oven_filtering")
-	local oven = premake.oven
-	local solution = premake.solution
 
-	local sln, prj
 
 --
 -- Setup
 --
 
+	local wks, prj
+
 	function suite.setup()
-		sln = test.createsolution()
+		wks = test.createWorkspace()
 	end
 
 	local function prepare()
-		sln = oven.bakeSolution(sln)
-		prj = solution.getproject(sln, 1)
+		wks = test.getWorkspace(wks)
+		prj = test.getproject(wks, 1)
 	end
 
 

@@ -13,10 +13,10 @@
 -- Setup/teardown
 --
 
-	local sln, prj, cfg
+	local wks, prj, cfg
 
 	function suite.setup()
-		sln, prj = test.createsolution()
+		wks, prj = test.createWorkspace()
 		kind "SharedLib"
 	end
 
@@ -227,19 +227,26 @@
 -- Check handling of C++ language features.
 --
 
-	function suite.cflags_onExceptions()
+	function suite.cxxflags_onExceptions()
+		exceptionhandling "on"
 		prepare()
 		test.contains("/EHsc", msc.getcxxflags(cfg))
 	end
 
-	function suite.cflags_onNoExceptions()
-		flags "NoExceptions"
+	function suite.cxxflags_onSEH()
+		exceptionhandling "SEH"
+		prepare()
+		test.contains("/EHa", msc.getcxxflags(cfg))
+	end
+
+	function suite.cxxflags_onNoExceptions()
+		exceptionhandling "Off"
 		prepare()
 		test.missing("/EHsc", msc.getcxxflags(cfg))
 	end
 
-	function suite.cflags_onNoRTTI()
-		flags "NoRTTI"
+	function suite.cxxflags_onNoRTTI()
+		rtti "Off"
 		prepare()
 		test.contains("/GR-", msc.getcxxflags(cfg))
 	end
@@ -318,4 +325,20 @@
 		syslibdirs { "/usr/local/lib" }
 		prepare()
 		test.contains('/LIBPATH:"/usr/local/lib"', msc.getLibraryDirectories(cfg))
+	end
+
+--
+-- Check handling of ignore default libraries
+--
+
+	function suite.ignoreDefaultLibraries_WithExtensions()
+		ignoredefaultlibraries { "lib1.lib" }
+		prepare()
+		test.contains('/NODEFAULTLIB:lib1.lib', msc.getldflags(cfg))
+	end
+
+	function suite.ignoreDefaultLibraries_WithoutExtensions()
+		ignoredefaultlibraries { "lib1" }
+		prepare()
+		test.contains('/NODEFAULTLIB:lib1.lib', msc.getldflags(cfg))
 	end

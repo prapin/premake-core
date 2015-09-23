@@ -12,12 +12,12 @@
 -- Setup/teardown
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "vs2008"
 
-		sln = solution("MySolution")
+		wks = workspace("MyWorkspace")
 		configurations { "Debug", "Release" }
 		platforms { "Zeus", "Ares" }
 		language "C++"
@@ -68,6 +68,6 @@
 <Tool
 	Name="VCLinkerTool"
 	LinkLibraryDependencies="false"
-	AdditionalDependencies="MyProject2.lib"
+	AdditionalDependencies="bin\Ares\Debug\MyProject2.lib"
 		]]
 	end

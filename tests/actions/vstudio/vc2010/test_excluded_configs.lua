@@ -12,12 +12,12 @@
 -- Setup/teardown
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "vs2010"
 
-		sln = solution("MySolution")
+		wks = workspace("MyWorkspace")
 		configurations { "Debug", "Release" }
 		platforms { "Zeus", "Ares" }
 		language "C++"
@@ -49,11 +49,11 @@
 	function suite.normalLink_onIncludedConfig()
 		prepare("Zeus")
 		test.capture [[
-		<Link>
-			<SubSystem>Console</SubSystem>
-			<GenerateDebugInformation>false</GenerateDebugInformation>
-			<EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
-		</Link>
+<Link>
+	<SubSystem>Console</SubSystem>
+	<GenerateDebugInformation>false</GenerateDebugInformation>
+	<EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+</Link>
 		]]
 	end
 
@@ -68,14 +68,14 @@
 	function suite.explicitLink_onExcludedConfig()
 		prepare("Ares")
 		test.capture [[
-		<Link>
-			<SubSystem>Console</SubSystem>
-			<GenerateDebugInformation>false</GenerateDebugInformation>
-			<AdditionalDependencies>MyProject2.lib;%(AdditionalDependencies)</AdditionalDependencies>
-			<EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
-		</Link>
-		<ProjectReference>
-			<LinkLibraryDependencies>false</LinkLibraryDependencies>
-		</ProjectReference>
+<Link>
+	<SubSystem>Console</SubSystem>
+	<GenerateDebugInformation>false</GenerateDebugInformation>
+	<AdditionalDependencies>bin\Ares\Debug\MyProject2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+	<EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+</Link>
+<ProjectReference>
+	<LinkLibraryDependencies>false</LinkLibraryDependencies>
+</ProjectReference>
 		]]
 	end

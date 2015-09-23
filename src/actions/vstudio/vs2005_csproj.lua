@@ -33,7 +33,7 @@
 	}
 
 	function cs2005.generate(prj)
-		io.utf8()
+		p.utf8()
 
 		premake.callarray(cs2005, cs2005.elements.project, prj)
 
@@ -182,6 +182,9 @@
 					end
 					if #contents > 0 then
 						_p("%s", contents)
+					end
+					if info.action == "EmbeddedResource" and cfg.customtoolnamespace then
+						_p(3,"<CustomToolNamespace>%s</CustomToolNamespace>", cfg.customtoolnamespace)
 					end
 					_p(2,'</%s>', info.action)
 				else
@@ -363,10 +366,11 @@
 --
 
 	function cs2005.propertyGroup(cfg)
+		local platform = vstudio.projectPlatform(cfg)
 		local arch = cs2005.arch(cfg)
-		_x(1,'<PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'%s|%s\' ">', cfg.buildcfg, arch)
+		p.push('<PropertyGroup Condition=" \'$(Configuration)|$(Platform)\' == \'%s|%s\' ">', platform, arch)
 		if arch ~= "AnyCPU" or _ACTION > "vs2008" then
-			_x(2,'<PlatformTarget>%s</PlatformTarget>', arch)
+			p.x('<PlatformTarget>%s</PlatformTarget>', arch)
 		end
 	end
 

@@ -56,27 +56,38 @@
 --    The configuration set to query.
 -- @param field
 --    The definition of field to be queried.
--- @param context
+-- @param filter
 --    A list of lowercase context terms to use during the fetch. Only those
 --    blocks with terms fully contained by this list will be considered in
 --    determining the returned value. Terms should be lower case to make
 --    the context filtering case-insensitive.
+-- @param ctx
+--    The context that will be used for detoken.expand
+-- @param origin
+--    The originating configset if set.
 -- @return
 --    The requested value.
 ---
 
-	function configset.fetch(cset, field, context)
-		context = context or {}
+	function configset.fetch(cset, field, filter, ctx, origin)
+		filter = filter or {}
+		ctx = ctx or {}
 
 		if p.field.merges(field) then
-			return configset._fetchMerged(cset, field, context)
+			return configset._fetchMerged(cset, field, filter, ctx, origin)
 		else
-			return configset._fetchDirect(cset, field, context)
+			return configset._fetchDirect(cset, field, filter, ctx, origin)
 		end
 	end
 
 
-	function configset._fetchDirect(cset, field, filter)
+	function configset._fetchDirect(cset, field, filter, ctx, origin)
+		-- If the originating configset hasn't been compiled, then the value will still
+		-- be on that configset.
+		if origin and origin ~= cset and not origin.compiled then
+			return configset._fetchDirect(origin, field, filter, ctx, origin)
+		end
+
 		local abspath = filter.files
 		local basedir
 
@@ -85,40 +96,57 @@
 		local n = #blocks
 		for i = n, 1, -1 do
 			local block = blocks[i]
-			local value = block[key]
 
-			-- If the filter contains a file path, make it relative to
-			-- this block's basedir
-			if value ~= nil and abspath and not cset.compiled and block._basedir and block._basedir ~= basedir then
-				basedir = block._basedir
-				filter.files = path.getrelative(basedir, abspath)
-			end
+			if not origin or block._origin == origin then
+				local value = block[key]
 
-			if value ~= nil and (cset.compiled or criteria.matches(block._criteria, filter)) then
-				-- If value is an object, return a copy of it so that any
-				-- changes later made to it by the caller won't alter the
-				-- original value (that was a tough bug to find)
-				if type(value) == "table" then
-					value = table.deepcopy(value)
+				-- If the filter contains a file path, make it relative to
+				-- this block's basedir
+				if value ~= nil and abspath and not cset.compiled and block._basedir and block._basedir ~= basedir then
+					basedir = block._basedir
+					filter.files = path.getrelative(basedir, abspath)
 				end
-				return value
+
+				if value ~= nil and (cset.compiled or criteria.matches(block._criteria, filter)) then
+					-- If value is an object, return a copy of it so that any
+					-- changes later made to it by the caller won't alter the
+					-- original value (that was a tough bug to find)
+					if type(value) == "table" then
+						value = table.deepcopy(value)
+					end
+					-- Detoken
+					if field.tokens and ctx.environ then
+						value = p.detoken.expand(value, ctx.environ, field, ctx._basedir)
+					end
+					return value
+				end
 			end
 		end
 
 		filter.files = abspath
 
 		if cset.parent then
-			return configset._fetchDirect(cset.parent, field, filter)
+			return configset._fetchDirect(cset.parent, field, filter, ctx, origin)
 		end
 	end
 
 
-	function configset._fetchMerged(cset, field, filter)
+	function configset._fetchMerged(cset, field, filter, ctx, origin)
+		-- If the originating configset hasn't been compiled, then the value will still
+		-- be on that configset.
+		if origin and origin ~= cset and not origin.compiled then
+			return configset._fetchMerged(origin, field, filter, ctx, origin)
+		end
+
 		local result = {}
 
 		local function remove(patterns)
-			for i = 1, #patterns do
-				local pattern = patterns[i]
+			for _, pattern in ipairs(patterns) do
+				-- Detoken
+				if field.tokens and ctx.environ then
+					pattern = p.detoken.expand(pattern, ctx.environ, field, ctx._basedir)
+				end
+				pattern = path.wildcards(pattern):lower()
 
 				local j = 1
 				while j <= #result do
@@ -134,7 +162,7 @@
 		end
 
 		if cset.parent then
-			result = configset._fetchMerged(cset.parent, field, filter)
+			result = configset._fetchMerged(cset.parent, field, filter, ctx, origin)
 		end
 
 		local abspath = filter.files
@@ -145,22 +173,39 @@
 		local n = #blocks
 		for i = 1, n do
 			local block = blocks[i]
-
-			-- If the filter contains a file path, make it relative to
-			-- this block's basedir
-			if abspath and block._basedir and block._basedir ~= basedir and not cset.compiled then
-				basedir = block._basedir
-				filter.files = path.getrelative(basedir, abspath)
-			end
-
-			if cset.compiled or criteria.matches(block._criteria, filter) then
-				if block._removes and block._removes[key] then
-					remove(block._removes[key])
+			if not origin or block._origin == origin then
+				-- If the filter contains a file path, make it relative to
+				-- this block's basedir
+				if abspath and block._basedir and block._basedir ~= basedir and not cset.compiled then
+					basedir = block._basedir
+					filter.files = path.getrelative(basedir, abspath)
 				end
 
-				local value = block[key]
-				if value then
-					result = p.field.merge(field, result, value)
+				if cset.compiled or criteria.matches(block._criteria, filter) then
+					if block._removes and block._removes[key] then
+						remove(block._removes[key])
+					end
+
+					local value = block[key]
+					-- If value is an object, return a copy of it so that any
+					-- changes later made to it by the caller won't alter the
+					-- original value (that was a tough bug to find)
+					if type(value) == "table" then
+						value = table.deepcopy(value)
+					end
+
+					if value then
+						-- Detoken
+						if field.tokens and ctx.environ then
+							value = p.detoken.expand(value, ctx.environ, field, ctx._basedir)
+						end
+						-- Translate
+						if field and p.field.translates(field) then
+							value = p.field.translate(field, value)
+						end
+
+						result = p.field.merge(field, result, value)
+					end
 				end
 			end
 		end
@@ -255,6 +300,7 @@
 
 		local block = {}
 		block._criteria = crit
+		block._origin = cset
 
 		if basedir then
 			block._basedir = basedir:lower()
@@ -263,6 +309,27 @@
 		table.insert(cset.blocks, block)
 		cset.current = block
 		return true
+	end
+
+
+---
+-- Allow calling code to save and restore a filter.  Particularly useful for
+-- modules.
+---
+	function configset.getFilter(cset)
+		return {
+			_criteria = cset.current._criteria,
+			_basedir = cset.current._basedir
+		}
+	end
+
+	function configset.setFilter(cset, filter)
+		local block = {}
+		block._criteria = filter._criteria
+		block._basedir = filter._basedir
+		block._origin = cset
+		table.insert(cset.blocks, block)
+		cset.current = block;
 	end
 
 
@@ -325,9 +392,11 @@
 		local block = {}
 		block._basedir = cset.current._basedir
 		block._criteria = cset.current._criteria
+		block._origin = cset
 		table.insert(cset.blocks, block)
 		cset.current = block
 
+		-- TODO This comment is not completely valid anymore
 		-- This needs work; right now it is hardcoded to only work for lists.
 		-- To support removing from keyed collections, I first need to figure
 		-- out how to move the wildcard():lower() bit into the value
@@ -338,11 +407,6 @@
 		-- api.remove() needs to get pushed down to here (or field).
 
 		values = p.field.remove(field, {}, values)
-		for i, value in ipairs(values) do
-			if type(value) == "string" then
-				values[i] = path.wildcards(value):lower()
-			end
-		end
 
 		-- add a list of removed values to the block
 		current = cset.current
@@ -403,6 +467,9 @@
 
 		for i = 1, n do
 			local block = blocks[i]
+			if block._origin == cset then
+				block._origin = result
+			end
 
 			-- If the filter contains a file path, make it relative to
 			-- this block's basedir

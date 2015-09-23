@@ -1,15 +1,10 @@
 --
 -- premake.lua
 -- High-level helper functions for the project exporters.
--- Copyright (c) 2002-2014 Jason Perkins and the Premake project
+-- Copyright (c) 2002-2015 Jason Perkins and the Premake project
 --
 
 	local p = premake
-
-	local solution = p.solution
-	local project = p.project
-	local config = p.config
-	local field = p.field
 
 
 
@@ -48,13 +43,16 @@
 	function premake.capture(fn)
 		-- start a new capture without forgetting the old one
 		local old = _captured
-		_captured = {}
+		_captured = buffered.new()
 
 		-- capture
 		fn()
 
 		-- build the result
 		local captured = premake.captured()
+
+		-- free the capture buffer.
+		buffered.close(_captured)
 
 		-- restore the old capture and done
 		_captured = old
@@ -69,7 +67,7 @@
 
 	function premake.captured()
 		if _captured then
-			return table.concat(_captured, _eol)
+			return buffered.tostring(_captured)
 		else
 			return ""
 		end
@@ -140,46 +138,52 @@
 
 --
 -- Open a file for output, and call a function to actually do the writing.
--- Used by the actions to generate solution and project files.
+-- Used by the actions to generate workspace and project files.
 --
 -- @param obj
---    A solution or project object; will be passed to the callback function.
+--    A workspace or project object; will be passed to the callback function.
 -- @param ext
 --    An optional extension for the generated file, with the leading dot.
 -- @param callback
---    The function responsible for writing the file, should take a solution
+--    The function responsible for writing the file, should take a workspace
 --    or project as a parameters.
 --
 
 	function premake.generate(obj, ext, callback)
-		local fn = premake.filename(obj, ext)
-		printf("Generating %s...", path.getrelative(os.getcwd(), fn))
+		local output = premake.capture(function ()
+			_indentLevel = 0
+			callback(obj)
+			_indentLevel = 0
+		end)
 
-		local f, err = io.open(fn, "wb")
-		if (not f) then
+		local fn = premake.filename(obj, ext)
+
+		-- make sure output folder exists.
+		local dir = path.getdirectory(fn)
+		ok, err = os.mkdir(dir)
+		if not ok then
 			error(err, 0)
 		end
 
-		io.output(f)
-		_indentLevel = 0
-		callback(obj)
-		f:close()
-		_indentLevel = 0
+		local f, err = os.writefile_ifnotequal(output, fn);
+
+		if (f < 0) then
+			error(err, 0)
+		elseif (f > 0) then
+			printf("Generated %s...", path.getrelative(os.getcwd(), fn))
+		end
 	end
 
 
 
 ---
 -- Returns the full path a file generated from any of the project
--- objects (project, solution, rule).
+-- objects (project, workspace, rule).
 --
 -- @param obj
 --    The project object being generated.
 -- @param ext
 --    An optional extension for the generated file, with the leading dot.
--- @param callback
---    The function responsible for writing the file; will receive the
---    project object as its only argument.
 ---
 
 function premake.filename(obj, ext)
@@ -222,7 +226,7 @@ end
 		if not _captured then
 			io.write(s)
 		else
-			table.insert(_captured, s)
+			buffered.write(_captured, s)
 		end
 	end
 
@@ -235,9 +239,7 @@ end
 
 	function premake.outln(s)
 		premake.out(s)
-		if not _captured then
-			io.write(_eol or "\n")
-		end
+		premake.out(_eol or "\n")
 	end
 
 
@@ -300,6 +302,16 @@ end
 			value = '"' .. value .. '"'
 		end
 		return value
+	end
+
+
+
+--
+-- Output a UTF-8 BOM to the exported file.
+--
+
+	function p.utf8()
+		p.out('\239\187\191')
 	end
 
 

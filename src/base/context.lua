@@ -98,6 +98,21 @@
 	end
 
 
+
+--
+-- Merges the list of terms from an existing context.
+--
+-- @param ctx
+--    The context to receive the copied terms.
+-- @param src
+--    The context containing the terms to copy.
+--
+
+	function context.mergeFilters(ctx, src)
+		ctx.terms = table.merge(ctx.terms, table.deepcopy(src.terms))
+	end
+
+
 --
 -- Sets the base directory for path token expansion in non-path fields; such
 -- values will be made relative to this path.
@@ -153,32 +168,36 @@
 --    The context to query.
 -- @param key
 --    The property key to query.
+-- @param onlylocal
+--     If true, don't combine values from parent contexts.
 -- @return
 --    The value of the key, as determined by the configuration set.  If
 --    there is a corresponding Premake field, and it the field is enabled
 --    for tokens, any contained tokens will be expanded.
 --
 
-	function context.fetchvalue(ctx, key)
+	function context.fetchvalue(ctx, key, onlylocal)
+		if not onlylocal then
+			local value = rawget(ctx, key)
+			if value ~= nil then
+				return value
+			end
+		end
+
 		-- The underlying configuration set will only hold registered fields.
 		-- If the requested key doesn't have a corresponding field, it is just
 		-- a regular value to be stored and fetched from the table.
 
 		local field = p.field.get(key)
 		if not field then
-			return rawget(ctx, key)
+			return nil
 		end
 
 		-- If there is a matching field, then go fetch the aggregated value
 		-- from my configuration set, and then cache it future lookups.
 
-		local value = configset.fetch(ctx._cfgset, field, ctx.terms)
+		local value = configset.fetch(ctx._cfgset, field, ctx.terms, ctx, onlylocal and ctx._cfgset)
 		if value then
-			-- do I need to expand tokens?
-			if field and field.tokens then
-				value = p.detoken.expand(value, ctx.environ, field, ctx._basedir)
-			end
-
 			-- store the result for later lookups
 			ctx[key] = value
 		end

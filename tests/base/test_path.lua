@@ -209,13 +209,13 @@
 		test.isequal("..", path.getrelative("/a///b/c","/a/b"))
 	end
 
-    function suite.getrelative_ignoresTrailingSlashes()
-         test.isequal("c", path.getrelative("/a/b/","/a/b/c"))
-    end
+	function suite.getrelative_ignoresTrailingSlashes()
+		 test.isequal("c", path.getrelative("/a/b/","/a/b/c"))
+	end
 
-  	function suite.getrelative_returnsAbsPath_onContactWithFileSysRoot()
-  		test.isequal("C:/Boost/Include", path.getrelative("C:/Code/MyApp", "C:/Boost/Include"))
-  	end
+	function suite.getrelative_returnsAbsPath_onContactWithFileSysRoot()
+		test.isequal("C:/Boost/Include", path.getrelative("C:/Code/MyApp", "C:/Boost/Include"))
+	end
 
 
 --
@@ -267,12 +267,20 @@
 		test.isequal("", path.join("p1/p2/", "../.."))
 	end
 
+	function suite.join_OnBothUpTwoFolders()
+		test.isequal("../../../../foo", path.join("../../", "../../foo"))
+	end
+
 	function suite.join_OnUptwoFolders()
 		test.isequal("p1/foo", path.join("p1/p2/p3", "../../foo"))
 	end
 
 	function suite.join_OnUptoBase()
 		test.isequal("foo", path.join("p1/p2/p3", "../../../foo"))
+	end
+
+	function suite.join_ignoreLeadingDots()
+		test.isequal("p1/p2/foo", path.join("p1/p2", "././foo"))
 	end
 
 	function suite.join_OnUptoParentOfBase()
@@ -315,6 +323,17 @@
 		test.isequal("$(ProjectDir)/$(TargetName)/../../Bin", path.join("$(ProjectDir)/$(TargetName)", "../../Bin"))
 	end
 
+	function suite.join_keepsComplexInternalEnvVar()
+		test.isequal("$(ProjectDir)/myobj_$(Arch)/../../Bin", path.join("$(ProjectDir)/myobj_$(Arch)", "../../Bin"))
+	end
+
+	function suite.join_keepsRecursivePattern()
+		test.isequal("p1/**.lproj/../p2", path.join("p1/**.lproj", "../p2"))
+	end
+
+	function suite.join_noCombineSingleDot()
+		test.isequal("p1/./../p2", path.join("p1/.", "../p2"))
+	end
 
 
 --
@@ -418,6 +437,14 @@
 		local p = path.normalize("../../../test/*.h")
 		test.isequal("../../../test/*.h", p)
 	end
+	
+	function suite.normalize_Test5()
+		test.isequal("test", path.normalize("./test"))
+		test.isequal("d:/", path.normalize("d:/"))
+		test.isequal("d:/", path.normalize("d:/./"))
+		local p = path.normalize("d:/game/..")
+		test.isequal("d:/", p)
+	end
 
 	function suite.normalize_trailingDots1()
 		local p = path.normalize("../game/test/..")
@@ -429,7 +456,26 @@
 		test.isequal("..", p)
 	end
 
+	function suite.normalize_singleDot()
+		local p = path.normalize("../../p1/p2/p3/p4/./a.pb.cc")
+		test.isequal("../../p1/p2/p3/p4/a.pb.cc", p)
+	end
+
 	function suite.normalize()
 		test.isequal("d:/ProjectB/bin", path.normalize("d:/ProjectA/../ProjectB/bin"))
 		test.isequal("/ProjectB/bin", path.normalize("/ProjectA/../ProjectB/bin"))
+	end
+	
+	function suite.normalize_leadingWhitespaces()
+		test.isequal("d:/game", path.normalize("\t\n d:/game"))
+	end
+	
+	function suite.normalize_multPath()
+		test.isequal("../a/b ../c/d", path.normalize("../a/b ../c/d"))
+		test.isequal("d:/test ../a/b", path.normalize("d:/game/../test ../a/b"))
+		test.isequal("d:/game/test ../a/b", path.normalize("d:/game/./test ../a/b"))
+		test.isequal("d:/test ../a/b", path.normalize(" d:/game/../test ../a/b"))
+		test.isequal("d:/game ../a/b", path.normalize(" d:/game ../a/./b"))
+		test.isequal("d:/game ../a/b", path.normalize("d:/game/ ../a/b"))
+		test.isequal("d:/game", path.normalize("d:/game/ "))
 	end

@@ -13,10 +13,10 @@
 -- Setup
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
-		sln, prj = test.createsolution()
+		wks, prj = test.createWorkspace()
 	end
 
 	local function prepare(platform)
@@ -497,7 +497,7 @@
 --
 
 	function suite.exceptions_onNoExceptions()
-		flags "NoExceptions"
+		exceptionhandling "Off"
 		prepare()
 		test.capture [[
 <ClCompile>
@@ -509,7 +509,7 @@
 	end
 
 	function suite.exceptions_onSEH()
-		flags "SEH"
+		exceptionhandling "SEH"
 		prepare()
 		test.capture [[
 <ClCompile>
@@ -521,7 +521,7 @@
 	end
 
 	function suite.runtimeTypeInfo_onNoRTTI()
-		flags "NoRTTI"
+		rtti "Off"
 		prepare()
 		test.capture [[
 <ClCompile>
@@ -532,7 +532,7 @@
 		]]
 	end
 
-	function suite.runtimeTypeInfo_onNoRTTI()
+	function suite.runtimeTypeInfo_onNoBufferSecurityCheck()
 		flags "NoBufferSecurityCheck"
 		prepare()
 		test.capture [[

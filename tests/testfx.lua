@@ -1,8 +1,10 @@
 --
 -- tests/testfx.lua
 -- Automated test framework for Premake.
--- Copyright (c) 2008-2014 Jason Perkins and the Premake project
+-- Copyright (c) 2008-2015 Jason Perkins and the Premake project
 --
+
+	local p = premake
 
 
 --
@@ -38,8 +40,8 @@
 		local actual = premake.captured() .. premake.eol()
 
 		-- create line-by-line iterators for both values
-		local ait = actual:gfind("(.-)" .. premake.eol())
-		local eit = expected:gfind("(.-)\n")
+		local ait = actual:gmatch("(.-)" .. premake.eol())
+		local eit = expected:gmatch("(.-)\n")
 
 		-- compare each value line by line
 		local linenum = 1
@@ -244,20 +246,25 @@
 -- Some helper functions
 --
 
-	function test.createsolution()
-		local sln = solution "MySolution"
+	function test.createWorkspace()
+		local wks = workspace("MyWorkspace")
 		configurations { "Debug", "Release" }
+		local prj = test.createproject(wks)
+		return wks, prj
+	end
 
-		local prj = project "MyProject"
-		language "C++"
-		kind "ConsoleApp"
-
-		return sln, prj
+	-- Eventually we'll want to deprecate this one and move everyone
+	-- over to createWorkspace() instead (4 Sep 2015).
+	function test.createsolution()
+		local wks = workspace("MySolution")
+		configurations { "Debug", "Release" }
+		local prj = test.createproject(wks)
+		return wks, prj
 	end
 
 
-	function test.createproject(sln)
-		local n = #sln.projects + 1
+	function test.createproject(wks)
+		local n = #wks.projects + 1
 		if n == 1 then n = "" end
 
 		local prj = project ("MyProject" .. n)
@@ -267,22 +274,24 @@
 	end
 
 
-	function test.getsolution(sln)
-		premake.oven.bake()
-		return premake.global.getSolution(sln.name)
+	function test.getWorkspace(wks)
+		p.oven.bake()
+		return p.global.getWorkspace(wks.name)
 	end
 
+	p.alias(test, "getWorkspace", "getsolution")
 
-	function test.getproject(sln, i)
-		sln = test.getsolution(sln)
-		return premake.solution.getproject(sln, i or 1)
+
+	function test.getproject(wks, i)
+		wks = test.getWorkspace(wks)
+		return p.workspace.getproject(wks, i or 1)
 	end
 
 
 	function test.getconfig(prj, buildcfg, platform)
-		sln = test.getsolution(prj.solution)
-		prj = premake.solution.getproject(sln, prj.name)
-		return premake.project.getconfig(prj, buildcfg, platform)
+		local wks = test.getWorkspace(prj.workspace)
+		prj = p.workspace.getproject(wks, prj.name)
+		return p.project.getconfig(prj, buildcfg, platform)
 	end
 
 
@@ -304,6 +313,15 @@
 	end
 
 	local function stub_print(s)
+	end
+
+	local function stub_utf8()
+	end
+
+	local function stub_os_writefile_ifnotequal(content, fname)
+		test.value_openedfilename = fname;
+		test.value_closedfile = true
+		return 0;
 	end
 
 
@@ -427,6 +445,8 @@
 		print = stub_print
 		io.open = stub_io_open
 		io.output = stub_io_output
+		os.writefile_ifnotequal = stub_os_writefile_ifnotequal
+		premake.utf8 = stub_utf8
 
 		local numpassed = 0
 		local numfailed = 0

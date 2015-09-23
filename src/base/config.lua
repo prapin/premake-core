@@ -31,7 +31,14 @@
 	function config.buildtargetinfo(cfg, kind, field)
 		local basedir = cfg.project.location
 
-		local directory = cfg[field.."dir"] or cfg.targetdir or basedir
+		local targetdir
+		if cfg.platform then
+			targetdir = path.join(basedir, 'bin', cfg.platform, cfg.buildcfg)
+		else
+			targetdir = path.join(basedir, 'bin', cfg.buildcfg)
+		end
+
+		local directory = cfg[field.."dir"] or cfg.targetdir or targetdir
 		local basename = cfg[field.."name"] or cfg.targetname or cfg.project.name
 
 		local prefix = cfg[field.."prefix"] or cfg.targetprefix or ""
@@ -243,9 +250,9 @@
 			local item
 
 			-- Sort the links into "sibling" (is another project in this same
-			-- solution) and "system" (is not part of this solution) libraries.
+			-- workspace) and "system" (is not part of this workspace) libraries.
 
-			local prj = premake.solution.findproject(cfg.solution, link)
+			local prj = p.workspace.findproject(cfg.workspace, link)
 			if prj and kind ~= "system" then
 
 				-- Sibling; is there a matching configuration in this project that
@@ -320,7 +327,7 @@
 
 	function config.getruntime(cfg)
 		local linkage = iif(cfg.flags.StaticRuntime, "Static", "Shared")
-		if (cfg.runtime == nil) then
+		if not cfg.runtime then
 			return linkage .. iif(config.isDebugBuild(cfg), "Debug", "Release")
 		else
 			return linkage .. cfg.runtime
@@ -352,14 +359,15 @@
 
 
 
---
--- Determine if a configuration contains one or more resource files.
---
+---
+-- Returns true if any of the files in the provided container pass the
+-- provided test function.
+---
 
-	function config.hasResourceFiles(self)
+	function config.hasFile(self, testfn)
 		local files = self.files
 		for i = 1, #files do
-			if path.isresourcefile(files[i]) then
+			if testfn(files[i]) then
 				return true
 			end
 		end

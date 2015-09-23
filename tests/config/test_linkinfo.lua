@@ -12,11 +12,11 @@
 -- Setup and teardown
 --
 
-	local sln, prj
+	local wks, prj
 
 	function suite.setup()
 		_ACTION = "test"
-		sln, prj = test.createsolution()
+		wks, prj = test.createWorkspace()
 		kind "StaticLib"
 		system "Windows"
 	end
@@ -24,16 +24,6 @@
 	local function prepare()
 		local cfg = test.getconfig(prj, "Debug")
 		return config.getlinkinfo(cfg)
-	end
-
-
---
--- Directory should be current (".") by default.
---
-
-	function suite.directoryIsDot_onNoTargetDir()
-		i = prepare()
-		test.isequal(".", path.getrelative(os.getcwd(), i.directory))
 	end
 
 
