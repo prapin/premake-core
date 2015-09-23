@@ -597,6 +597,8 @@
 			"StaticLib",
 			"WindowedApp",
 			"Utility",
+			"WatchApp",
+			"WatchExt",
 		},
 	}
 
