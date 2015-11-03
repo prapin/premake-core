@@ -13,6 +13,13 @@
 	local tree = p.tree
 
 
+---
+-- Add namespace for element definition lists for premake.callArray()
+---
+
+	sln2005.elements = {}
+
+
 --
 -- Return the list of sections contained in the solution.
 --
@@ -32,7 +39,8 @@
 
 	function sln2005.generate(wks)
 		-- Mark the file as Unicode
-		_p('\239\187\191')
+		premake.utf8()
+		premake.outln('')
 
 		sln2005.reorderProjects(wks)
 
@@ -127,7 +135,7 @@
 --
 
 	function sln2005.projectdependencies(prj)
-		local deps = project.getdependencies(prj)
+		local deps = project.getdependencies(prj, 'dependOnly')
 		if #deps > 0 then
 			_p(1,'ProjectSection(ProjectDependencies) = postProject')
 			for _, dep in ipairs(deps) do
@@ -137,6 +145,62 @@
 		end
 	end
 
+
+--
+-- Write out the list of project configuration platforms.
+--
+
+	sln2005.elements.projectConfigurationPlatforms = function(cfg, context)
+		return {
+			sln2005.activeCfg,
+			sln2005.build0,
+		}
+	end
+
+
+	function sln2005.projectConfigurationPlatforms(wks, sorted, descriptors)
+		p.w("GlobalSection(ProjectConfigurationPlatforms) = postSolution")
+		local tr = p.workspace.grouptree(wks)
+		tree.traverse(tr, {
+			onleaf = function(n)
+				local prj = n.project
+				table.foreachi(sorted, function(cfg)
+					local context = {}
+					-- Look up the matching project configuration. If none exist, this
+					-- configuration has been excluded from the project, and should map
+					-- to closest available project configuration instead.
+					context.prj = prj
+					context.prjCfg = project.getconfig(prj, cfg.buildcfg, cfg.platform)
+					context.excluded = (context.prjCfg == nil or context.prjCfg.flags.ExcludeFromBuild)
+
+					if context.prjCfg == nil then
+						context.prjCfg = project.findClosestMatch(prj, cfg.buildcfg, cfg.platform)
+					end
+
+					context.descriptor = descriptors[cfg]
+					context.platform = vstudio.projectPlatform(context.prjCfg)
+					context.architecture = vstudio.archFromConfig(context.prjCfg, true)
+
+					p.push()
+					p.callArray(sln2005.elements.projectConfigurationPlatforms, cfg, context)
+					p.pop()
+				end)
+			end
+		})
+		p.w("EndGlobalSection")
+	end
+
+
+	function sln2005.activeCfg(cfg, context)
+		p.w('{%s}.%s.ActiveCfg = %s|%s', context.prj.uuid, context.descriptor, context.platform, context.architecture)
+	end
+
+
+	function sln2005.build0(cfg, context)
+		if not context.excluded and context.prjCfg.kind ~= premake.NONE then
+			p.w('{%s}.%s.Build.0 = %s|%s', context.prj.uuid, context.descriptor, context.platform, context.architecture)
+		end
+	end
 
 --
 -- Write out the tables that map solution configurations to project configurations.
@@ -191,48 +255,7 @@
 		_p(1,"EndGlobalSection")
 
 		-- For each project in the solution...
-
-		_p(1,"GlobalSection(ProjectConfigurationPlatforms) = postSolution")
-
-		local tr = p.workspace.grouptree(wks)
-		tree.traverse(tr, {
-			onleaf = function(n)
-				local prj = n.project
-
-				-- For each (sorted) configuration in the solution...
-
-				table.foreachi(sorted, function (cfg)
-
-					local platform, architecture
-
-					-- Look up the matching project configuration. If none exist, this
-					-- configuration has been excluded from the project, and should map
-					-- to closest available project configuration instead.
-
-					local prjCfg = project.getconfig(prj, cfg.buildcfg, cfg.platform)
-					local excluded = (prjCfg == nil or prjCfg.flags.ExcludeFromBuild)
-
-					if prjCfg == nil then
-						prjCfg = project.findClosestMatch(prj, cfg.buildcfg, cfg.platform)
-					end
-
-					local descriptor = descriptors[cfg]
-					local platform = vstudio.projectPlatform(prjCfg)
-					local architecture = vstudio.archFromConfig(prjCfg, true)
-
-					_p(2,'{%s}.%s.ActiveCfg = %s|%s', prj.uuid, descriptor, platform, architecture)
-
-					-- Only output Build.0 entries for buildable configurations
-
-					if not excluded and prjCfg.kind ~= premake.NONE then
-						_p(2,'{%s}.%s.Build.0 = %s|%s', prj.uuid, descriptor, platform, architecture)
-					end
-
-				end)
-			end
-		})
-		_p(1,"EndGlobalSection")
-
+		sln2005.projectConfigurationPlatforms(wks, sorted, descriptors)
 	end
 
 
@@ -274,11 +297,13 @@
 -- be ignored.
 --
 
-	sln2005.sectionmap = {
-		ConfigurationPlatforms = sln2005.configurationPlatforms,
-		SolutionProperties     = sln2005.properties,
-		NestedProjects         = sln2005.NestedProjects
-	}
+	sln2005.elements.sections = function(wks)
+		return {
+			sln2005.configurationPlatforms,
+			sln2005.properties,
+			sln2005.NestedProjects
+		}
+	end
 
 
 --
@@ -286,9 +311,5 @@
 --
 
 	function sln2005.sections(wks)
-		for _, section in ipairs(sln2005.solutionSections(wks)) do
-			if sln2005.sectionmap[section] then
-				sln2005.sectionmap[section](wks)
-			end
-		end
+		p.callArray(sln2005.elements.sections, wks)
 	end

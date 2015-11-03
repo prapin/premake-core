@@ -110,7 +110,7 @@
 		local action = p.action.current()
 		local tools = string.format(' ToolsVersion="%s"', action.vstudio.toolsVersion)
 
-		local framework = prj.framework or action.vstudio.targetFramework or "4.0"
+		local framework = prj.dotnetframework or action.vstudio.targetFramework or "4.0"
 		p.w('<TargetFrameworkVersion>v%s</TargetFrameworkVersion>', framework)
 	end
 
@@ -877,13 +877,8 @@
 	end
 
 	function m.projectReferences(prj)
-		local refs = project.getdependencies(prj)
+		local refs = project.getdependencies(prj, 'linkOnly')
 		if #refs > 0 then
-			-- sort dependencies by uuid.
-			table.sort(refs, function(a,b)
-				return a.uuid < b.uuid
-			end)
-
 			p.push('<ItemGroup>')
 			for _, ref in ipairs(refs) do
 				local relpath = vstudio.path(prj, vstudio.projectfile(ref))
@@ -942,8 +937,10 @@
 
 	function m.additionalUsingDirectories(cfg)
 		if #cfg.usingdirs > 0 then
-			local dirs = table.concat(vstudio.path(cfg, cfg.usingdirs), ";")
-			m.element("AdditionalUsingDirectories", nil, "%s;%%(AdditionalUsingDirectories)", dirs)
+			local dirs = vstudio.path(cfg, cfg.usingdirs)
+			if #dirs > 0 then
+				m.element("AdditionalUsingDirectories", nil, "%s;%%(AdditionalUsingDirectories)", table.concat(dirs, ";"))
+			end
 		end
 	end
 

@@ -71,6 +71,21 @@
 
 
 --
+-- Check link command for the Utility kind.
+--
+-- Utility projects should only run custom commands, and perform no linking.
+--
+
+	function suite.links_onUtility()
+		kind "Utility"
+		prepare { "linkCmd" }
+		test.capture [[
+  LINKCMD =
+		]]
+	end
+
+
+--
 -- Check link command for a Mac OS X universal static library.
 --
 
@@ -143,6 +158,30 @@
   LDDEPS += build/bin/Debug/libMyProject2.so
         ]]
     end
+
+--
+-- Check a linking multiple siblings.
+--
+
+	function suite.links_onSiblingStaticLib()
+		links "MyProject2"
+		links "MyProject3"
+
+		test.createproject(wks)
+		kind "StaticLib"
+		location "build"
+
+		test.createproject(wks)
+		kind "StaticLib"
+		location "build"
+
+		prepare { "ldFlags", "libs", "ldDeps" }
+		test.capture [[
+  ALL_LDFLAGS += $(LDFLAGS) -s
+  LIBS += -Wl,--start-group build/bin/Debug/libMyProject2.a build/bin/Debug/libMyProject3.a -Wl,--end-group
+  LDDEPS += build/bin/Debug/libMyProject2.a build/bin/Debug/libMyProject3.a
+		]]
+	end
 
 --
 -- When referencing an external library via a path, the directory

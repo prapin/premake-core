@@ -549,7 +549,7 @@
 	}
 
 	api.register {
-		name = "framework",
+		name = "dotnetframework",
 		scope = "config",
 		kind = "string",
 	}
@@ -1075,6 +1075,7 @@
 	api.alias("buildoutputs", "buildOutputs")
 	api.alias("cleanextensions", "cleanExtensions")
 	api.alias("configfile", "configFile")
+	api.alias("dotnetframework", "framework")
 	api.alias("editandcontinue", "editAndContinue")
 	api.alias("fileextension", "fileExtension")
 	api.alias("propertydefinition", "propertyDefinition")

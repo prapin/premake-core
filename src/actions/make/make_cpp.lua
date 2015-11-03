@@ -352,7 +352,7 @@
 
 
 	function make.cppTargetRules(prj)
-		_p('$(TARGET): $(GCH) $(OBJECTS) $(LDDEPS) $(RESOURCES) ${CUSTOMFILES}')
+		_p('$(TARGET): $(GCH) ${CUSTOMFILES} $(OBJECTS) $(LDDEPS) $(RESOURCES)')
 		_p('\t@echo Linking %s', prj.name)
 		_p('\t$(SILENT) $(LINKCMD)')
 		_p('\t$(POSTBUILDCMDS)')
@@ -404,7 +404,7 @@
 
 
 	function make.includes(cfg, toolset)
-		local includes = premake.esc(toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
+		local includes = toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs)
 		_p('  INCLUDES +=%s', make.list(includes))
 	end
 
@@ -434,6 +434,9 @@
 			else
 				_p('  LINKCMD = $(AR) -rcs "$@" $(OBJECTS)')
 			end
+		elseif cfg.kind == premake.UTILITY then
+			-- Empty LINKCMD for Utility (only custom build rules)
+			_p('  LINKCMD =')
 		else
 			-- this was $(TARGET) $(LDFLAGS) $(OBJECTS)
 			--   but had trouble linking to certain static libs; $(OBJECTS) moved up
