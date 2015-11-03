@@ -1,6 +1,6 @@
 [submodule "modules/xcode"]
 	path = modules/xcode
-	url = https://github.com/prapin/premake-xcode.git
+	url = git@github.com:prapin/premake-xcode.git
 [submodule "modules/monodevelop"]
 	path = modules/monodevelop
 	url = https://github.com/premake/premake-monodevelop.git
